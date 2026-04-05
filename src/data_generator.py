@@ -45,9 +45,10 @@ df = pd.DataFrame({
     "weight": weights
 })
 
-#I am just overwriting here but for prod, I will be implementing proper data version control
+# I am just overwriting here but for prod, I will be implementing proper
+# data version control
 os.makedirs("data", exist_ok=True)
 df.to_csv("data/applicants.csv", index=False)
 
-logger.info(f"Generated {len(df)} records successfully")
-logger.info(f"Saved to data/applicants.csv")
+logger.info("Generated {len(df)} records successfully")
+logger.info("Saved to data/applicants.csv")

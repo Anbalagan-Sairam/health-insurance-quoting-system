@@ -12,8 +12,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
 def get_quote(applicant):
-    #return insurance quote based on age, gender and bmi
+    # return insurance quote based on age, gender and bmi
     age = applicant["age"]
     bmi = applicant["bmi"]
     gender = applicant["gender"]

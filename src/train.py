@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 df = pd.read_csv("data/applicants.csv")
 
-# One-hot encoding gender to avoid implying ordinal relationship between categories
+# One-hot encoding gender to avoid implying ordinal relationship between
+# categories
 ohe = OneHotEncoder(drop="first", sparse_output=False)
 df["gender_encoded"] = ohe.fit_transform(df[["gender"]]).astype(int)
 
@@ -32,7 +33,8 @@ X = df[["age", "height", "weight", "gender_encoded"]]
 y = df["bmi"]
 
 # Holding out 20% test data set for model evaluation
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42)
 
 mlflow.set_experiment("bmi_prediction")
 
@@ -67,10 +69,15 @@ with mlflow.start_run(run_name="polynomial_regression_champion"):
     mlflow.log_metric("CV_R2_std", round(cv_scores.std(), 4))
 
     # Log model artifact
-    mlflow.sklearn.log_model(champion, "bmi_model", input_example=X_train.iloc[:1])
+    mlflow.sklearn.log_model(champion, "bmi_model",
+                             input_example=X_train.iloc[:1])
 
     logger.info(f"MAE: {mae}, RMSE: {rmse}, R2: {r2}")
-    logger.info(f"CV R2: {cv_scores.round(4)}, Mean: {cv_scores.mean().round(4)}, Std: {cv_scores.std().round(4)}")
+    logger.info(
+        f"CV R2: {
+            cv_scores.round(4)}, Mean: {
+            cv_scores.mean().round(4)}, Std: {
+                cv_scores.std().round(4)}")
 
 os.makedirs("models", exist_ok=True)
 

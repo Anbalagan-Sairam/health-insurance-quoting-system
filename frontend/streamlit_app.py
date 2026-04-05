@@ -4,7 +4,10 @@ import requests
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
-st.set_page_config(page_title="Sun Life Insurance Quoting", page_icon="🌞", layout="centered")
+st.set_page_config(
+    page_title="Sun Life Insurance Quoting",
+    page_icon="🌞",
+    layout="centered")
 
 st.markdown("""
     <style>
@@ -99,7 +102,9 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="section-title">Tell us about yourself</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="section-title">Tell us about yourself</div>',
+    unsafe_allow_html=True)
 
 col1, col2 = st.columns(2)
 with col1:
@@ -109,9 +114,17 @@ with col2:
 
 col3, col4 = st.columns(2)
 with col3:
-    height = st.number_input("Height (cm)", min_value=50.0, max_value=250.0, value=170.0)
+    height = st.number_input(
+        "Height (cm)",
+        min_value=50.0,
+        max_value=250.0,
+        value=170.0)
 with col4:
-    weight = st.number_input("Weight (kg)", min_in=10.0, max_value=300.0, value=70.0)
+    weight = st.number_input(
+        "Weight (kg)",
+        min_in=10.0,
+        max_value=300.0,
+        value=70.0)
 
 if st.button("Get My Quote →"):
     with st.spinner("Calculating your quote..."):
@@ -130,5 +143,6 @@ if st.button("Get My Quote →"):
                     <div class="reason-text">{data['reason']}</div>
                 </div>
             """, unsafe_allow_html=True)
-        except Exception as e:
-            st.error("Could not connect to the API. Make sure the FastAPI server is running.")
+        except Exception:
+            st.error(
+                "Could not connect to the API. Make sure the FastAPI server is running.")

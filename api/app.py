@@ -14,28 +14,34 @@ app = FastAPI(title="Sun Life Insurance Quoting System")
 model = joblib.load("models/bmi_model.pkl")
 ohe = joblib.load("models/ohe_encoder.pkl")
 
+
 class Applicant(BaseModel):
     gender: str = Field(..., pattern="^(Male|Female)$")
     age: int = Field(..., ge=18, le=120)
     height: float = Field(..., gt=0)
     weight: float = Field(..., gt=0)
 
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
     response = await call_next(request)
-    logger.info(f"{request.method} {request.url.path} - {response.status_code} - {round(time.time() - start, 4)}s")
+    logger.info(f"{request.method} {
+                request.url.path} - {response.status_code} - {round(time.time() - start, 4)}s")
     return response
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
+
 @app.post("/predict")
 def predict(applicant: Applicant):
     try:
         gender_encoded = ohe.transform([[applicant.gender]])[0][0]
-        features = np.array([[applicant.age, applicant.height, applicant.weight, gender_encoded]])
+        features = np.array(
+            [[applicant.age, applicant.height, applicant.weight, gender_encoded]])
         bmi = round(float(model.predict(features)[0]), 2)
         result = get_quote({
             "age": applicant.age,
@@ -50,7 +56,13 @@ def predict(applicant: Applicant):
             bmi=bmi,
             quote=result["quote"]
         )
-        logger.info(f"Prediction - age: {applicant.age}, height: {applicant.height}, weight: {applicant.weight}, gender: {applicant.gender}, bmi: {bmi}, quote: {result['quote']}")
+        logger.info(
+            f"Prediction - age: {
+                applicant.age}, height: {
+                applicant.height}, weight: {
+                applicant.weight}, gender: {
+                    applicant.gender}, bmi: {bmi}, quote: {
+                        result['quote']}")
         return {
             "bmi": bmi,
             "quote": result["quote"],

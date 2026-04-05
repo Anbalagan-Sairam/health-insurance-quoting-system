@@ -16,6 +16,8 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Generate data and train model
+        run: PYTHONPATH=. python src/data_generator.py && PYTHONPATH=. python src/BMI_calculator.py && PYTHONPATH=. python src/train.py
       - name: Lint with flake8
         run: flake8 src/ api/ tests/ --max-line-length=120 --ignore=E501
       - name: Run tests

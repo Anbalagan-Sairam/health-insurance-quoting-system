@@ -19,6 +19,6 @@ jobs:
       - name: Lint with flake8
         run: flake8 src/ api/ tests/ --max-line-length=120 --ignore=E501
       - name: Run tests
-        run: pytest tests/ -v
+        run: PYTHONPATH=. pytest tests/ -v
       - name: Build Docker image
         run: docker build -t health-insurance-quoting-system .

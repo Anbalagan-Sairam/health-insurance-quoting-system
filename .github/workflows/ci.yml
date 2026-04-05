@@ -1,0 +1,24 @@
+name: CI
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Lint with flake8
+        run: flake8 src/ api/ tests/ --max-line-length=120 --ignore=E501
+      - name: Run tests
+        run: pytest tests/ -v
+      - name: Build Docker image
+        run: docker build -t health-insurance-quoting-system .

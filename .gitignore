@@ -1,0 +1,23 @@
+# data and model artifacts
+data/
+models/
+logs/
+mlruns/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# jupyter
+.ipynb_checkpoints/
+
+# env
+.env
+venv/
+
+# pytest
+.pytest_cache/

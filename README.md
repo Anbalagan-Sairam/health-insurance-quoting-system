@@ -35,7 +35,6 @@ insurance-quoter/
 ├── logs/
 │   └── predictions.csv         # Real-time prediction store
 ├── Dockerfile
-├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```

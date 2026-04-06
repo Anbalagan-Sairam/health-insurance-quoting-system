@@ -1,201 +1,217 @@
 # Health Insurance Quoting System
- 
-## Goal
-The goal of this assignment is to build an end-to-end health insurance quoting system — from synthetic data generation to a production-ready ML pipeline with a REST API, frontend, observability, testing, containerisation, and CI/CD.
+
+## Operationalization Plan
+The operationalization of this health insurance quoting system encompasses five core components: data generation pipeline for synthetic applicant data, polynomial regression model for BMI prediction, rule engine that derives insurance quotes from BMI and age, FastAPI inference layer for real-time serving and Streamlit frontend for user interaction. Supporting infrastructure includes unit testing, structured logging, Docker containerization, MLflow experiment tracking and a GitHub Actions CI/CD pipeline.
 
 ---
- 
+
 ## Project Structure
- 
+
 ```
-sunlife-assignment/
+insurance-quoter/
 ├── src/
-│   ├── data_generator.py       # Generates synthetic applicant dataset
-│   ├── BMI_calculator.py       # BMI calculation function + applies to dataset
-│   ├── train.py                # Model training, evaluation, and model saving
-│   └── rule_engine.py          # Business rule engine and quoting logic
+│   ├── data_generator.py       # Generates applicants.csv
+│   ├── bmi_calculator.py       # Adds BMI column to applicants.csv
+│   ├── train.py                # Trains model → saves models/bmi_model.pkl, logs to mlruns/
+│   ├── rule_engine.py          # Business rule engine and quoting logic
+│   └── monitoring.py           # Prediction logging
 ├── api/
-│   └── app.py                  # FastAPI serving layer
+│   └── app.py                  # FastAPI: loads bmi_model.pkl → predicts BMI → rule engine → quote
 ├── frontend/
-│   └── streamlit_app.py        # Streamlit frontend
+│   └── streamlit_app.py
 ├── tests/
-│   └── test_app.py             # Unit tests for business rules
+│   └── test_app.py
+│   └── test_mock.py
 ├── notebooks/
-│   └── submission.ipynb        # Full end-to-end notebook walkthrough
-├── models/                     # Saved model artifacts
-├── data/                       # Generated dataset
-├── logs/                       # Prediction and pipeline logs
-├── Dockerfile                  # Container definition
-├── docker-compose.yml          # Multi-service orchestration
+│   └── submission.ipynb
+├── mlruns/
+├── models/
+│   ├── bmi_model.pkl
+│   └── ohe_encoder.pkl
+├── data/
+│   └── applicants.csv
+├── logs/
+│   └── predictions.csv         # Real-time prediction store
+├── Dockerfile
+├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
- 
+
 ---
- 
+
+## Architecture
+
+### Training
+
+data_generator.py → bmi_calculator.py → train.py → models/bmi_model.pkl
+                                                  → models/ohe_encoder.pkl
+                                                  → mlruns/ (MLflow tracking)
+                                                
+### Inference
+
+User input: { gender, age, height, weight }
+        ↓
+app.py — loads models/bmi_model.pkl → predicts BMI
+        ↓
+rule_engine.py — applies business rules (age + predicted BMI + gender)
+        ↓
+Response: { bmi, quote, reason }
+        ↓
+logs/pipeline.log — logs every pipeline event and prediction
+
+### System overview
+
+[Applicant] → [Streamlit UI] → [FastAPI /predict] → [bmi_model.pkl] → [rule_engine] → [Quote]
+                                       |
+                               [logs/pipeline.log]
+                                       |
+                            [monitoring.py]
+
+Commentary: In production, training and inference pipelines would be fully decoupled with training running on an event-driven basis via AWS SageMaker Pipelines and inference served independently behind a load balancer. This project is a simplified approximation to demonstrate the end-to-end flow within a single codebase.
+
+---
+
 ## Setup
- 
+
 ```
 pip install -r requirements.txt
 ```
- 
+
 ---
- 
+
 ## Part 1: Data Generation
  
-Generates a synthetic dataset of 2,000 applicants with realistic height/weight distributions split by gender, grounded in CSO 2024 and Healthy Ireland 2024 data.
- 
+Generates a synthetic dataset of 2,000 applicants with realistic height/weight distributions split by gender, grounded in CSO 2024 and gov.ie data. The data gets saved in data/applicants.csv. In production, strict data versioning will be put in place where sub folders are created in S3 and saved on each run.
+
 ```
 python src/data_generator.py
 ```
  
 ---
- 
+
 ## Part 2: BMI Calculation
- 
-Calculates BMI for each applicant using the standard formula: weight_kg / (height_m)²
- 
+
+Calculates BMI for each applicant using the standard formula: weight_kg / (height_m)² and appends it to data/applicants.csv as a historical label for model training.
+
 ```
 python src/BMI_calculator.py
 ```
- 
+
 ---
  
 ## Part 3: Model Training
  
-Trains and evaluates four models (Linear Regression, Polynomial Regression, Random Forest, Gradient Boosting) with 5-fold cross-validation. Champion model saved to models/bmi_model.pkl.
+Trains a Polynomial Regression model (degree=2) with 5-fold cross-validation. Model saved to models/bmi_model.pkl, OHE encoder saved to models/ohe_encoder.pkl — reused at inference time to ensure gender encoding remains consistent. All runs tracked via MLflow.
  
 ```
 python src/train.py
 ```
  
-Why Polynomial Regression? BMI is a near-deterministic function of height and weight. Polynomial Regression captures the mathematical structure exactly, achieving R² of 0.9999 with consistent cross-validation scores. In a regulated insurance environment, model decisions must be explainable to auditors and regulators — Polynomial Regression provides interpretability while matching the underlying formula structure.
+To view MLflow experiments:
+
+```
+mlflow ui --host 0.0.0.0 --port 5000
+```
  
+If running from SageMaker Studio, open:
+
+```
+https://<your-studio-domain>.studio.us-east-1.sagemaker.aws/jupyterlab/default/proxy/5000/
+```
+
+Commentary: In production, versioned subfolders would be created in S3 on each training run (e.g. s3://insurance-quote/bmi_model/v1/, v2/) with the latest stable version promoted via MLflow Model Registry. The inference layer would always load from a designated production alias in the registry, allowing rollback to any previous version without redeployment.
+
 ---
  
 ## Part 4: Business Rule Engine
- 
-Implements quoting logic based on age and BMI thresholds with a female discount applied where applicable.
- 
-```python
-from src.rule_engine import get_quote
- 
-get_quote({"age": 30, "bmi": 25, "gender": "Female"})
-# {'quote': 540.0, 'reason': 'BMI is in the right range 10% discount added as application gender is female.'}
+
+Implements quoting logic based on age and BMI thresholds with a 10% discount applied for female applicants. Accepts predicted BMI from the model at inference time via app.py.
+
 ```
- 
+python src/rule_engine.py
+```
+
 ---
- 
+
 ## Part 5: API
- 
-FastAPI app exposing a /predict endpoint with Pydantic input validation, request logging middleware, and a /health check.
- 
+
+FastAPI app exposing a `/predict` endpoint with Pydantic input validation, request logging middleware, and a `/health` check. Loads `models/bmi_model.pkl` and `models/ohe_encoder.pkl` at startup — predicts BMI from inputs, feeds predicted BMI into the rule engine and returns the quote.
+
 ```
 uvicorn api.app:app --reload --host 0.0.0.0 --port 8000
 ```
- 
-Example request:
+
+The command can be tested in terminal with following POST request:
  
 ```
 curl -X POST "http://localhost:8000/predict" \
   -H "Content-Type: application/json" \
   -d '{"gender": "Female", "age": 30, "height": 165, "weight": 70}'
 ```
- 
-Response:
- 
-```json
-{
-  "bmi": 25.71,
-  "quote": 540.0,
-  "reason": "BMI is in the right range 10% discount added as application gender is female."
-}
-```
- 
+
+Commentary: In production, Amazon ElastiCache (Redis) would be used to cache predictions for common input combinations — this completely bypasses our current method where inference is called each time allowing us to cut down costs while scaling.
+
 ---
  
 ## Part 6: Frontend
  
-Streamlit app styled to match Sun Life's product UI. Requires FastAPI server to be running.
- 
+Streamlit app styled to match Insurance firm's product UI. Requires FastAPI server to be running.
+
 ```
 streamlit run frontend/streamlit_app.py
 ```
+
+If running from SageMaker Studio, open:
  
+```
+https://<your-studio-domain>.studio.us-east-1.sagemaker.aws/jupyterlab/default/proxy/8501/
+```
+
 ---
  
-## Part 7: Testing
+## Part 7: Observability & Monitoring
  
-Unit tests cover all business rule combinations — all age/BMI tiers, boundary conditions, and the female discount.
+Every prediction is logged to logs/predictions.csv with timestamp, inputs, predicted BMI and quote.
  
+Commentary 1: In production, this would be replaced with AWS SageMaker Model Monitor, which continuously monitors the deployed endpoint for data drift and model quality degradation. CloudWatch would handle alerting via SNS notifications if drift exceeds configured thresholds, with logs and metrics stored in S3.
+
+Commentary 2: In production, as part of Responsible AI deployment; fairness audits would be performed periodically by grouping predictions across demographic subgroups and comparing average quotes to detect unintended disparate impact. SageMaker Clarify would automate this with scheduled bias reports and CloudWatch alerts if disparity metrics exceed configured thresholds.
+
+---
+
+## Part 8: Testing
+ 
+Unit tests cover all business rule combinations — all age/BMI tiers, boundary conditions and the female discount. Mock tests cover the API endpoints with the model and OHE encoder mocked so tests run without needing the pkl files.
+
 ```
 pytest tests/test_app.py -v
 ```
- 
-Output: 14 passed
- 
+
+Commentary: In production, integration tests would be added additionally to test the full end-to-end flow against a live API with real model artifacts.
+
 ---
- 
-## Part 8: Observability & Monitoring
- 
-Every prediction is logged with timestamp, inputs, predicted BMI, and quote to logs/pipeline.log. Request-level observability (latency, status codes) is handled via FastAPI middleware and logged to stdout.
- 
----
- 
+
 ## Part 9: Containerisation
  
-```
-docker build -t sunlife .
-docker run -p 8000:8000 sunlife
-```
- 
-Or run both API and frontend together:
+Packages the API and frontend into isolated containers. The API container loads models from the mounted models/ directory, logs predictions to logs/ and serves on port 8000. The Streamlit frontend connects to the API via the internal Docker network.
+
+To run the API only:
  
 ```
-docker-compose up
+docker build -t insurance-quoter .
+docker run -p 8000:8000 insurance-quoter
 ```
- 
+
+Commentary: In production, the image would be pushed to Amazon ECR and deployed to AWS ECS Fargate behind an Application Load Balancer. API and frontend will be running as seperate ECS services and auto scaling configured depending on the request volume.
+
 ---
- 
+
 ## Part 10: CI/CD
- 
-GitHub Actions pipeline runs on every push to main. Steps: checkout, Python setup, install dependencies, lint with flake8, run unit tests with pytest.
- 
+
+GitHub Actions pipeline runs on every push to main and dev branches. The flow of CI is as follows -> Python setup, install dependencies, generate data, train model, lint checking with flake8, run unit tests with pytest and build Docker image.
+
 ---
- 
-## Operationalization Plan
- 
-### Architecture
- 
-```
-[Applicant] -> [Streamlit UI] -> [FastAPI] -> [ML Model] -> [Business Rules] -> [Quote]
-                                     |
-                               [Prediction Log]
-                                     |
-                          [Drift Monitoring Pipeline]
-```
- 
-### Steps to Operationalize
- 
-1. Model Versioning
-All experiments tracked via MLflow. Final model versioned and registered in MLflow Model Registry. Artifacts stored in S3.
- 
-2. Serving Layer
-FastAPI containerised and deployed to AWS ECS Fargate behind an Application Load Balancer. Auto-scaling configured based on request volume.
- 
-3. CI/CD Pipeline
-GitHub Actions runs tests and linting on every push. On merge to main, triggers automated deployment to ECS via AWS CodePipeline.
- 
-4. Monitoring
-- Request-level: latency and error rates via CloudWatch
-- Prediction-level: all inputs/outputs logged to S3
-- Drift detection: weekly Evidently reports comparing incoming feature distributions against training baseline
-- Alerts: SNS notifications if BMI prediction drift exceeds threshold
- 
-5. Feedback Loop
-New applicant data accumulated monthly. Automated retraining pipeline triggered via SageMaker Pipelines. Model promoted to production only if new model outperforms baseline on held-out evaluation set.
- 
-6. Security
-- API authentication via AWS API Gateway + IAM
-- PII data encrypted at rest (S3 SSE) and in transit (HTTPS)
-- GDPR Article 22 compliance — Polynomial Regression chosen specifically for explainability of automated decisions
+## References:
+I have used official AWS Sagemaker documents as a reference document to write the operationalization plan along with domain knowledge from prior work experience:
+https://github.com/aws/amazon-sagemaker-examples

@@ -98,7 +98,6 @@ st.markdown("""
     <div class="header">
         <h1>Health Insurance Calculator</h1>
         <p>Secure and protect your family's future.</p>
-        <small>⏱ Duration: 2 Min</small>
     </div>
 """, unsafe_allow_html=True)
 
@@ -116,14 +115,14 @@ col3, col4 = st.columns(2)
 with col3:
     height = st.number_input(
         "Height (cm)",
-        min_value=50.0,
-        max_value=250.0,
+        min_value=140.0,
+        max_value=210.0,
         value=170.0)
 with col4:
     weight = st.number_input(
         "Weight (kg)",
-        min_in=10.0,
-        max_value=300.0,
+        min_value=45.0,
+        max_value=200.0,
         value=70.0)
 
 if st.button("Get My Quote →"):

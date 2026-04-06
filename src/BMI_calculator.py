@@ -18,7 +18,6 @@ def calculate_bmi(weight, height):
     # Calculate BMI given weight in kg and height in cm.
     return weight / (height / 100) ** 2
 
-
 if __name__ == "__main__":
     df = pd.read_csv("data/applicants.csv")
     df["bmi"] = df.apply(

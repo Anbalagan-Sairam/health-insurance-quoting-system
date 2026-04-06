@@ -22,10 +22,10 @@ def get_quote(applicant):
     if 18 <= age <= 39 and (bmi < 17 or bmi > 37.5):
         quote = 800
         reason = "Age is between 18 and 39 and BMI is either less than 17 or greater than 37.5"
-    elif 40 <= age <= 60 and (bmi < 18 or bmi > 37.5):
+    elif 40 <= age <= 59 and (bmi < 18 or bmi > 37.5):
         quote = 900
         reason = "Age is between 40 and 59 and BMI is either less than 18 or greater than 37.5"
-    elif age > 60 and (bmi < 18 or bmi > 44.5):
+    elif age >= 60 and (bmi < 18 or bmi > 44.5):
         quote = 18000
         reason = "Age is greater than 60 and BMI is either less than 18 or greater than 44.5"
     else:

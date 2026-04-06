@@ -1,5 +1,7 @@
 # Health Insurance Quoting System
 
+Steps 1–5 (Data Generation, BMI Calculation, Model Training, Evaluation and Business Rule Engine) are documented and demonstrated end-to-end in `notebooks/submission.ipynb`. Steps 6 onwards cover operationalization and are documented here.
+
 ## Operationalization Plan
 The operationalization of this health insurance quoting system encompasses five core components: data generation pipeline for synthetic applicant data, polynomial regression model for BMI prediction, rule engine that derives insurance quotes from BMI and age, FastAPI inference layer for real-time serving and Streamlit frontend for user interaction. Supporting infrastructure includes unit testing, structured logging, Docker containerization, MLflow experiment tracking and a GitHub Actions CI/CD pipeline.
 

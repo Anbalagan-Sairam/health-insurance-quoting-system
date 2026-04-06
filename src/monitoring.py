@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 LOG_PATH = "logs/observability.csv"
 logger = logging.getLogger("uvicorn")
 
+
 def log_prediction(gender, age, height, weight, bmi, quote):
     os.makedirs("logs", exist_ok=True)
     record = {

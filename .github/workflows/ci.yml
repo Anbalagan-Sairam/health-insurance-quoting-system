@@ -21,7 +21,7 @@ jobs:
         env:
           MLFLOW_TRACKING_URI: ./mlruns
       - name: Lint with flake8
-        run: flake8 src/ api/ tests/ --max-line-length=120 --ignore=E501
+        run: flake8 src/ api/ tests/ --max-line-length=120 --ignore=E302
       - name: Run tests
         run: PYTHONPATH=. pytest tests/ -v
       - name: Build Docker image

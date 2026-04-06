@@ -33,12 +33,12 @@ def test_age_over_60_normal_bmi():
 # Female discount
 def test_female_discount():
     result = get_quote({"age": 30, "bmi": 25, "gender": "Female"})
-    assert result["quote"] == 540.0
+    assert result["quote"] == 540
     assert "10% discount" in result["reason"]
 
 def test_female_discount_high_risk():
     result = get_quote({"age": 25, "bmi": 38, "gender": "Female"})
-    assert result["quote"] == 720.0
+    assert result["quote"] == 720
 
 # Boundaries
 def test_age_boundary_60():
